@@ -16,7 +16,7 @@ class TCPClient {
   receive() {
     // listen to the received data event stream
     socket.listen((List<int> event) {
-    print(utf8.decode(event));
+      print(utf8.decode(event));
     });
   }
 

@@ -40,26 +40,39 @@ class _MyAppState extends State<MyApp> {
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               controller: myController,
+              decoration: const InputDecoration(
+                labelText: 'IP-Addresse'
+              ),
             ),
           ),
-          ElevatedButton(
-            onPressed: () {
-              print(myController.text);
-              tcpClient.connect(myController.text.toString(), 12345);
-            },
-            child: Text("connect"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              tcpClient.disconnect();
-            },
-            child: Text("disconnect"),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  print(myController.text);
+                  tcpClient.connect(myController.text.toString(), 12345);
+                },
+                child: Text("connect"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  tcpClient.disconnect();
+                },
+                child: Text("disconnect"),
+              ),
+            ],
           ),
           ElevatedButton(onPressed: () async{
             tcpClient.send(">Buzzer Alarm1");
-            await Future.delayed(Duration(seconds: 1));
+            await Future.delayed(const Duration(seconds: 1));
             tcpClient.send(">Buzzer Alarm");
-          }, child: Text("Buzzer"))
+          }, child: const Text("Buzzer")),
+          ElevatedButton(onPressed: () async{
+            tcpClient.send(">Camera Down 110");
+            await Future.delayed(const Duration(seconds: 1));
+            tcpClient.send(">Camera Up 70");
+          }, child: const Text("Camera Jiggle")),
         ],
       ),
     );
