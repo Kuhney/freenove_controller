@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:freenove_controller/tcpClient.dart';
+import 'package:flutter_mjpeg/flutter_mjpeg.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -36,6 +37,7 @@ class _MyAppState extends State<MyApp> {
       ),
       body: Column(
         children: [
+          // WebViewXPage(),
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
@@ -62,6 +64,16 @@ class _MyAppState extends State<MyApp> {
                 child: Text("disconnect"),
               ),
             ],
+          ),
+          Mjpeg(
+            isLive: true,
+            error: (context, error, stack) {
+              print(error);
+              print(stack);
+              return Text(error.toString(), style: TextStyle(color: Colors.red));
+            },
+            stream:
+            'http://192.168.178.145:8080/stream', //'http://192.168.1.37:8081',
           ),
           ElevatedButton(onPressed: () async{
             tcpClient.send(">Buzzer Alarm1");
