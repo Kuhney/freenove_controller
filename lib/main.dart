@@ -1,38 +1,74 @@
 import 'package:flutter/material.dart';
-import 'package:freenove_controller/tcpClient.dart';
 import 'package:flutter_mjpeg/flutter_mjpeg.dart';
+import 'globals.dart' as globals;
 
 void main() {
-  runApp(MaterialApp(
-    home: MyApp(),
-
+  runApp(const MaterialApp(
+    title: 'Connect to Robot',
+    home: ConnectRoute(),
   ));
 }
 
-class MyApp extends StatefulWidget {
-  const MyApp({Key? key}) : super(key: key);
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  var tcpClient = TCPClient(); // "192.168.178.145", 12345
-
-  final myController = TextEditingController();
-
-  @override
-  void dispose() {
-    // Clean up the controller when the widget is disposed.
-    myController.dispose();
-    super.dispose();
-  }
+class ControlRoute extends StatelessWidget {
+  const ControlRoute({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Freenove Controller"),
+        title: const Text('Control your Robot'),
+      ),
+      body: Column(
+        children: [
+          Mjpeg(
+            isLive: true,
+            error: (context, error, stack) {
+              print(error);
+              print(stack);
+              return Text(error.toString(), style: const TextStyle(color: Colors.red));
+            },
+            stream: ('http://${globals.ipAddress}:8080/stream'),
+          ),
+          ElevatedButton(onPressed: () async{
+            globals.tcpClient.send(">Buzzer Alarm1");
+            await Future.delayed(const Duration(seconds: 1));
+            globals.tcpClient.send(">Buzzer Alarm");
+          }, child: const Text("Buzzer")),
+          ElevatedButton(onPressed: () async{
+            globals.tcpClient.send(">Camera Down 110");
+            await Future.delayed(const Duration(seconds: 1));
+            globals.tcpClient.send(">Camera Up 70");
+          }, child: const Text("Camera Jiggle")),
+          Center(
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Change Connection'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+class ConnectRoute extends StatefulWidget {
+  const ConnectRoute({Key? key}) : super(key: key);
+
+  @override
+  State<ConnectRoute> createState() => _ConnectRouteState();
+}
+
+class _ConnectRouteState extends State<ConnectRoute> {
+  TextEditingController textController = TextEditingController(text: '192.168.178.145');
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Connect to your Robot"),
         centerTitle: true,
       ),
       body: Column(
@@ -41,7 +77,7 @@ class _MyAppState extends State<MyApp> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
-              controller: myController,
+              controller: textController,
               decoration: const InputDecoration(
                 labelText: 'IP-Addresse'
               ),
@@ -52,39 +88,26 @@ class _MyAppState extends State<MyApp> {
             children: [
               ElevatedButton(
                 onPressed: () {
-                  print(myController.text);
-                  tcpClient.connect(myController.text.toString(), 12345);
+                  setState(() {
+                    globals.ipAddress = textController.text.toString();
+                  });
+                  try {
+                    globals.tcpClient.disconnect();
+                    print('Client disconnected');
+                  } catch (e, s) {
+                    print(s);
+                  }
+                  globals.tcpClient.connect(globals.ipAddress, 12345);
+                  print('Client connected');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ControlRoute()),
+                  );
                 },
                 child: Text("connect"),
               ),
-              ElevatedButton(
-                onPressed: () {
-                  tcpClient.disconnect();
-                },
-                child: Text("disconnect"),
-              ),
             ],
           ),
-          Mjpeg(
-            isLive: true,
-            error: (context, error, stack) {
-              print(error);
-              print(stack);
-              return Text(error.toString(), style: TextStyle(color: Colors.red));
-            },
-            stream:
-            'http://192.168.178.145:8080/stream', //'http://192.168.1.37:8081',
-          ),
-          ElevatedButton(onPressed: () async{
-            tcpClient.send(">Buzzer Alarm1");
-            await Future.delayed(const Duration(seconds: 1));
-            tcpClient.send(">Buzzer Alarm");
-          }, child: const Text("Buzzer")),
-          ElevatedButton(onPressed: () async{
-            tcpClient.send(">Camera Down 110");
-            await Future.delayed(const Duration(seconds: 1));
-            tcpClient.send(">Camera Up 70");
-          }, child: const Text("Camera Jiggle")),
         ],
       ),
     );
