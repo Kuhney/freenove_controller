@@ -40,6 +40,7 @@ dependencies:
   webview_flutter: ^4.0.1
   path_provider: ^2.0.11
   flutter_mjpeg: ^2.0.3
+  flutter_joystick: ^0.0.3
 
 dev_dependencies:
   flutter_test:
