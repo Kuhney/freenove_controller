@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,12 +6,25 @@ class TCPClient {
   late Socket socket;
 
   connect(String ip, int port) async {
-    socket = await Socket.connect(ip, port);
-    print('connected');
+    Socket.connect(ip, port).then((Socket sock) {
+      socket = sock;
+      socket.listen(dataHandler,
+          onError: errorHandler);
+    }).catchError((e) {
+      print("Unable to connect: $e");
+    });
   }
 
   send(String value) {
     socket.add(utf8.encode(value));
+  }
+
+  void dataHandler(data){
+    print(String.fromCharCodes(data).trim());
+  }
+
+  void errorHandler(error, StackTrace trace){
+    print(error);
   }
 
   receive() {

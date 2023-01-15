@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_mjpeg/flutter_mjpeg.dart';
 import 'package:flutter_joystick/flutter_joystick.dart';
-// import ‘package:flutter/services.dart’;
+import 'package:flutter/services.dart';
 
 import 'helpers.dart';
 import 'globals.dart' as globals;
 
 void main() {
-  // WidgetsFlutterBinding.ensureInitialized();
-  // SystemChrome.setPreferredOrientations([
-  //   DeviceOrientation.landscapeLeft,
-  //   DeviceOrientation.portraitUp
-  // ]);
-  runApp(const MaterialApp(
-    title: 'Connect to Robot',
-    home: ConnectRoute(),
-  ));
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft]).then((_){
+    runApp(const MaterialApp(
+      title: 'Connect to Robot',
+      home: ConnectRoute(),
+    ));
+  });
+
 }
 
 class ControlRoute extends StatelessWidget {
@@ -25,13 +24,63 @@ class ControlRoute extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Control your Robot'),
+        title: Text(globals.ipAddress),
+        centerTitle: true,
+        toolbarHeight: 40,
+        backgroundColor: Colors.lightBlue,
       ),
-      body: Column(
+      body: Row(
         children: [
           Expanded(
-            flex: 2,
-            child: Mjpeg(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Card(
+                      color: Colors.lightBlue,
+                      child: InkWell(
+                        splashColor: Colors.blue.withAlpha(30),
+                        onTapDown: (details) {
+                          debugPrint('Buzzer on');
+                          globals.tcpClient.send(">Buzzer Alarm 1");
+                        },
+                        onTapUp: (details) {
+                          debugPrint('Buzzer off');
+                          globals.tcpClient.send(">Buzzer Alarm");
+                        },
+                        child: const SizedBox(
+                          height: 25,
+                          child: Center(child: Text("Buzzer")),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SafeArea(
+                    child: Joystick(
+                      mode:  JoystickMode.all,
+                      listener: (details) {
+                        print(details.x);
+                        print(details.y);
+                        globals.cameraHAngle = globals.cameraHAngle - details.y*5;
+                        globals.cameraHAngle =  constrain(globals.cameraHAngle, 30, 180);
+                        globals.tcpClient.send(">Camera Down ${globals.cameraHAngle.toInt()}");
+                        globals.cameraVAngle = globals.cameraVAngle - details.x*5;
+                        globals.cameraVAngle =  constrain(globals.cameraVAngle, 0, 180);
+                        globals.tcpClient.send(">Camera Left ${globals.cameraVAngle.toInt()}");
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        Expanded(
+          flex: 2,
+          child: Mjpeg(
               isLive: true,
               error: (context, error, stack) {
                 print(error);
@@ -40,75 +89,97 @@ class ControlRoute extends StatelessWidget {
               },
               stream: ('http://${globals.ipAddress}:8080/stream'),
             ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Card(
+                          color: Colors.red,
+                          child: InkWell(
+                            splashColor: Colors.blue.withAlpha(30),
+                            onTapDown: (details) {
+                              debugPrint('Toggled Red Led');
+                              globals.tcpClient.send(">RGB Red");
+                            },
+                            child: const SizedBox(
+                              height: 25,
+                              width: 100,
+                              child: Center(child: Text("Red")),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Card(
+                          color: Colors.green,
+                          child: InkWell(
+                            splashColor: Colors.blue.withAlpha(30),
+                            onTapDown: (details) {
+                              debugPrint('Toggled Green Led');
+                              globals.tcpClient.send(">RGB Green");
+                            },
+                            child: const SizedBox(
+                              height: 25,
+                              width: 100,
+                              child: Center(child: Text("Green")),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Card(
+                          color: Colors.blue,
+                          child: InkWell(
+                            splashColor: Colors.blue.withAlpha(30),
+                            onTapDown: (details) {
+                              debugPrint('Toggled Blue Led');
+                              globals.tcpClient.send(">RGB Blue");
+                            },
+                            child: const SizedBox(
+                              height: 25,
+                              width: 100,
+                              child: Center(child: Text("Blue")),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SafeArea(
+                  child: Joystick(
+                    mode:  JoystickMode.all,
+                    listener: (details) {
+                      print(details.x);
+                      print(details.y);
+                      if (details.y < 0){
+                        globals.speed = details.y*(-100);
+                        globals.speed = constrain(globals.speed, 0, 100);
+                        globals.tcpClient.send(">Move Forward ${globals.speed.toInt()}");
+                      }else{
+                        globals.speed = details.y*100;
+                        globals.speed = constrain(globals.speed, 0, 100);
+                        globals.tcpClient.send(">Move Backwards ${globals.speed.toInt()}");
+                      }
+                      globals.turnAngle = numMap(details.x, -1, 1, 170, 10);
+                      globals.tcpClient.send(">Turn Center ${globals.turnAngle.toInt()}");
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
-          ElevatedButton(onPressed: () async{
-            globals.tcpClient.send(">Buzzer Alarm1");
-            await Future.delayed(const Duration(seconds: 1));
-            globals.tcpClient.send(">Buzzer Alarm");
-          }, child: const Text("Buzzer")),
-          ElevatedButton(onPressed: () async{
-            globals.tcpClient.send(">Camera Down 45");
-            globals.cameraHAngle = 45;
-            globals.tcpClient.send(">Camera Left 90");
-            globals.cameraVAngle = 90;
-          }, child: const Text("Camera Reset")),
-          ElevatedButton(
-              onPressed: () async{
-                globals.tcpClient.send(">Move Forward 35");
-                await Future.delayed(const Duration(milliseconds: 500));
-                globals.tcpClient.send(">Move Backward 35");
-                await Future.delayed(const Duration(milliseconds: 500));
-                globals.tcpClient.send(">Move Stop");
-              },
-              child: const Text("Move Jiggle")
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text('Change Connection'),
-          ),
-          Row(
-            children: [
-              Joystick(
-                mode:  JoystickMode.all,
-                listener: (details) {
-                  print(details.x);
-                  print(details.y);
-                  globals.cameraHAngle = globals.cameraHAngle - details.y*5;
-                  globals.cameraHAngle =  constrain(globals.cameraHAngle, 30, 180);
-                  globals.tcpClient.send(">Camera Down ${globals.cameraHAngle.toInt()}");
-                  globals.cameraVAngle = globals.cameraVAngle - details.x*5;
-                  globals.cameraVAngle =  constrain(globals.cameraVAngle, 0, 180);
-                  globals.tcpClient.send(">Camera Left ${globals.cameraVAngle.toInt()}");
-                },
-              ),
-              Joystick(
-                base: JoystickBase(mode: JoystickMode.all),
-                mode:  JoystickMode.all,
-                listener: (details) {
-                  print(details.x);
-                  print(details.y);
-                  if (details.y < 0){
-                    globals.speed = details.y*(-100);
-                    globals.speed = constrain(globals.speed, 0, 100);
-                    globals.tcpClient.send(">Move Forward ${globals.speed.toInt()}");
-                  }else{
-                    globals.speed = details.y*100;
-                    globals.speed = constrain(globals.speed, 0, 100);
-                    globals.tcpClient.send(">Move Backwards ${globals.speed.toInt()}");
-                  }
-                  globals.turnAngle = numMap(details.x, -1, 1, 170, 10);
-                  globals.tcpClient.send(">Turn Center ${globals.turnAngle.toInt()}");
-                  // globals.cameraVAngle = globals.cameraVAngle - details.x*5;
-                  // globals.cameraVAngle =  constrain(globals.cameraVAngle, 0, 180);
-                  // globals.tcpClient.send(">Camera Left ${globals.cameraVAngle.toInt()}");
-                },
-              ),
-            ]
-          ),
+        ),
         ],
-      ),
+      )
     );
   }
 }
@@ -130,6 +201,7 @@ class _ConnectRouteState extends State<ConnectRoute> {
       appBar: AppBar(
         title: const Text("Connect to your Robot"),
         centerTitle: true,
+        backgroundColor: Colors.lightBlue
       ),
       body: Column(
         children: [
@@ -147,18 +219,16 @@ class _ConnectRouteState extends State<ConnectRoute> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   setState(() {
                     globals.ipAddress = textController.text.toString();
                   });
                   try {
                     globals.tcpClient.disconnect();
-                    print('Client disconnected');
                   } catch (e, s) {
-                    print(s);
+                    print(e);
                   }
                   globals.tcpClient.connect(globals.ipAddress, 12345);
-                  print('Client connected');
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const ControlRoute()),
@@ -168,8 +238,13 @@ class _ConnectRouteState extends State<ConnectRoute> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  globals.tcpClient.disconnect();
-                  print('Client disconnected');
+                  try {
+                    globals.tcpClient.disconnect();
+                    print('Client disconnected');
+                  } catch (e, s) {
+                    print(e);
+                    print("Client wasn't connected yet");
+                  }
                 },
                 child: Text("disconnect"),
               )
